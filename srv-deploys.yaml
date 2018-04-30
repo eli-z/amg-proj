@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: smoother
+  labels:
+    app: smoother
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: smoother
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smoother-algo
+  labels:
+    app: smoother-algo
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: smoother-algo
