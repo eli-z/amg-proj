@@ -1,10 +1,15 @@
 package acc.edu.amg.data;
 
 public class EquationData {
+	//a vector
 	private double[] aVector;
+	//x vector
 	private double[] xVector;
+	//significant x index
 	private int iIndex;
+	//b value
 	private double b;
+	
 	public double[] getaVector() {
 		return aVector;
 	}

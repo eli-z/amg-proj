@@ -1,4 +1,4 @@
-package acc.edu.amg.smothers.concrete;
+package acc.edu.amg.smoothers;
 
 import acc.edu.amg.exceptions.CalculationException;
 
@@ -13,8 +13,8 @@ public class JacobiSmoother {
 					continue;
 				sum += aVec[i] * xVec[i];
 			}
-			xVec[varIndex] = 1d / aVec[varIndex] * (b - sum);
-			return xVec[varIndex];
+			return 1d / aVec[varIndex] * (b - sum);
+//			return xVec[varIndex];
 				
 		}
 		throw new CalculationException("Not passes preliminary checks");

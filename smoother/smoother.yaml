@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: smoother-deployment
+  name: smoother
   labels:
     app: smoother
 spec:
-  replicas: 2
+  replicas: 4
   selector:
     matchLabels:
       app: smoother
@@ -20,11 +20,17 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /smoother/health/is-alive
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10       
         resources:
           limits:
             memory: "500Mi"
-            cpu: 0.5
+            cpu: 1
           requests:
             memory: "200Mi"
-            cpu: 0.1
+            cpu: 0.2
 

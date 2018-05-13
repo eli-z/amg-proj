@@ -12,7 +12,7 @@ spec:
   template:
     metadata:
       labels:
-        app: smoother
+        app: smoother-algo
     spec:
       containers:
       - name: smoother-algo
@@ -20,6 +20,12 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /smoother-algo/health/is-alive
+            port: 8080
+          initialDelaySeconds: 180
+          periodSeconds: 10        
         resources:
           limits:
             memory: "2048Mi"
