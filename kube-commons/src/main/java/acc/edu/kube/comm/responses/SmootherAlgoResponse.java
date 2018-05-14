@@ -1,9 +1,12 @@
-package acc.edu.amg.smothersalgo.data;
+package acc.edu.kube.comm.responses;
 
-public class ResponseData {
+import acc.edu.amg.data.MatrixData;
+
+public class SmootherAlgoResponse {
 	private int dimention;
 	private int iterations;
-	private double[] xVector;
+	private MatrixData matrix;
+	private double avgIterationsTime;
 	private long timeTookMilli;
 	public int getDimention() {
 		return dimention;
@@ -17,17 +20,23 @@ public class ResponseData {
 	public void setIterations(int iterations) {
 		this.iterations = iterations;
 	}
-	public double[] getxVector() {
-		return xVector;
-	}
-	public void setxVector(double[] xVector) {
-		this.xVector = xVector;
-	}
 	public long getTimeTookMilli() {
 		return timeTookMilli;
 	}
 	public void setTimeTookMilli(long timeTookMilli) {
 		this.timeTookMilli = timeTookMilli;
+	}
+	public MatrixData getMatrix() {
+		return matrix;
+	}
+	public void setMatrix(MatrixData matrix) {
+		this.matrix = matrix;
+	}
+	public double getAvgIterationsTime() {
+		return avgIterationsTime;
+	}
+	public void setAvgIterationsTime(double avgIterationsTime) {
+		this.avgIterationsTime = avgIterationsTime;
 	}
 	
 	

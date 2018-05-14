@@ -3,6 +3,7 @@ package acc.edu.amg.data;
 public class MatrixData {
 	private Equation[] equations;
 	private double[] bVector;
+	private double[] xVector;
 	public Equation[] getEquations() {
 		return equations;
 	}
@@ -23,4 +24,12 @@ public class MatrixData {
 	public int dimention() {
 		return bVector.length;
 	}
+	public double[] getxVector() {
+		return xVector;
+	}
+	public void setxVector(double[] xVector) {
+		this.xVector = xVector;
+	}
+	
+	
 }

@@ -1,6 +1,7 @@
 package acc.edu.amg.smothersalgo.controller;
 
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -20,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 import acc.edu.amg.data.Equation;
 import acc.edu.amg.data.EquationData;
 import acc.edu.amg.data.MatrixData;
+import acc.edu.amg.data.convertors.DataConverter;
 import acc.edu.amg.exceptions.CalculationException;
-import acc.edu.amg.smothersalgo.data.ResponseData;
 import acc.edu.kube.comm.RestTemplateTool;
+import acc.edu.kube.comm.responses.SmoothResponse;
+import acc.edu.kube.comm.responses.SmootherAlgoResponse;
 import acc.edu.kube.exceptions.RestException;
 
 @RestController
@@ -34,57 +37,52 @@ public class SmootherAlgo {
 	private RestTemplateTool restTool;
 	
 	@PostMapping(path="jacobi/{iterations}")
-	public ResponseEntity<ResponseData> smoothJ(@RequestParam int iterations, @RequestBody MatrixData matrix) throws CalculationException, InterruptedException, ExecutionException{
+	public ResponseEntity<SmootherAlgoResponse> smoothJ(@RequestParam int iterations, @RequestBody MatrixData matrix) throws CalculationException, InterruptedException, ExecutionException{
 		if(matrix.validate())
 		{
-			ResponseData response = new ResponseData();
+			SmootherAlgoResponse response = new SmootherAlgoResponse();
 			logger.info("Startring Jacobi for " + iterations + " iterations");
 			long startTime = System.currentTimeMillis();
-			double[]xVec = new double[matrix.dimention()];
-			double[] resVector = new double[matrix.dimention()];
-			EquationData[] equations = createData(matrix);
+			CompletableFuture<SmoothResponse>[] futuresArray = new CompletableFuture[matrix.dimention()];
+			SmoothResponse sResp;
+			long smoothIterationTime;
+			List<CompletableFuture<SmoothResponse>> futures = new ArrayList<>(matrix.dimention());			
 			for(int i = 0; i < iterations; i++) {
-				CompletableFuture<EquationData>[] futures = new CompletableFuture[equations.length];
+				futures.clear();
+				EquationData[] equations = DataConverter.convertEquations(matrix.getEquations(), matrix.getxVector());
 				for(int index = 0; index < equations.length; index++) {
 					final int ind = index;
-					futures[index] = CompletableFuture.supplyAsync(() ->{
+					futures.add(CompletableFuture.supplyAsync(() ->{
 						try {
-							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother", equations[ind], EquationData.class);
+							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother", equations[ind], SmoothResponse.class);
 						} catch (RestException e) {
 							logger.error("Error during external call", e);
-							return equations[ind];
+							return new SmoothResponse(matrix.getxVector()[ind], 0);
 						}
-					});
-					CompletableFuture.allOf(futures).get();
+					}));
+					
 				}
-				response.setDimention(equations.length);
-				response.setIterations(iterations);
-				response.setTimeTookMilli(System.currentTimeMillis() - startTime);
+				CompletableFuture.allOf(futures.toArray(futuresArray)).get();
+				smoothIterationTime = 0;
+				for(int index = 0; index < equations.length; index++) {
+					sResp = futuresArray[index].get();
+					smoothIterationTime += sResp.getTimeTook();
+					matrix.getxVector()[index] = sResp.getValue();
+				}
+				response.setAvgIterationsTime(response.getAvgIterationsTime() + (double)(smoothIterationTime) / (double)equations.length);
 			}
+			response.setDimention(matrix.dimention());
+			response.setIterations(iterations);
+			response.setAvgIterationsTime(response.getAvgIterationsTime() / (double)iterations);
+			response.setTimeTookMilli(System.currentTimeMillis() - startTime);
 			return ResponseEntity.ok(response);
 		}
 			
 		return ResponseEntity.badRequest().body(null);
 	}
 	
-	private EquationData[] createData(MatrixData matrix) {
-		EquationData[] result = new EquationData[matrix.dimention()];
-		EquationData tmp;
-		Equation[] eqs = matrix.getEquations();
-		double[] bVector = matrix.getbVector();
-		for(int i = 0; i < matrix.dimention(); i++) {
-			tmp = new EquationData();
-			tmp.setaVector(eqs[i].getaVector());
-			tmp.setxVector(new double[eqs[i].getaVector().length]);
-			tmp.setB(bVector[i]);
-			tmp.setiIndex(i);
-			result[i] = tmp;
-		}
-		return result;
-	}
-
 	@PostMapping(path="gauss-siedel/{iterations}")
-	public ResponseEntity<ResponseData> smoothGS(@RequestParam int iterations, @RequestBody MatrixData data) throws CalculationException{
+	public ResponseEntity<SmootherAlgoResponse> smoothGS(@RequestParam int iterations, @RequestBody MatrixData data) throws CalculationException{
 		//List<Map<Integer,EquationData>> independentSetsList = createIndependentSetsList(data);
 		//independentSetsList.forEach(data -> );
 		return ResponseEntity.ok(null);

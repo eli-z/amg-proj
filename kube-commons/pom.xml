@@ -28,6 +28,11 @@
     		<artifactId>spring-context</artifactId>
    			<version>${spring.version}</version>
 		</dependency>
+		<dependency>
+    		<groupId>acc.edu.amg</groupId>
+    		<artifactId>amg-commons</artifactId>
+   			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 		
 	</dependencies>
 	<build>

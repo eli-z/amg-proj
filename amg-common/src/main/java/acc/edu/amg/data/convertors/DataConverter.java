@@ -32,4 +32,13 @@ public class DataConverter {
 		}
 		return result;
 	}
+	
+	public static EquationData[] convertEquations(Equation[] equations, double[] xVector) throws CalculationException {
+		if(equations == null || equations.length == 0)
+			throw new CalculationException("Equation array is null or empty");
+		EquationData[] result = new EquationData[equations.length];
+		for(int i = 0; i < equations.length; i++)
+			result[i] = convertEquation(equations[i], xVector);
+		return result;
+	}
 }
