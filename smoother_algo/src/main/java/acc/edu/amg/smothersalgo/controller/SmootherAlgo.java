@@ -7,18 +7,20 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import javax.websocket.server.PathParam;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import acc.edu.amg.data.Equation;
 import acc.edu.amg.data.EquationData;
 import acc.edu.amg.data.MatrixData;
 import acc.edu.amg.data.convertors.DataConverter;
@@ -37,7 +39,7 @@ public class SmootherAlgo {
 	private RestTemplateTool restTool;
 	
 	@PostMapping(path="jacobi/{iterations}")
-	public ResponseEntity<SmootherAlgoResponse> smoothJ(@RequestParam int iterations, @RequestBody MatrixData matrix) throws CalculationException, InterruptedException, ExecutionException{
+	public ResponseEntity<SmootherAlgoResponse> smoothJ(@PathVariable("iterations") Integer iterations, @RequestBody MatrixData matrix) throws CalculationException, InterruptedException, ExecutionException{
 		if(matrix.validate())
 		{
 			SmootherAlgoResponse response = new SmootherAlgoResponse();
@@ -48,13 +50,16 @@ public class SmootherAlgo {
 			long smoothIterationTime;
 			List<CompletableFuture<SmoothResponse>> futures = new ArrayList<>(matrix.dimention());			
 			for(int i = 0; i < iterations; i++) {
+				logger.info("Startring iteration " + i + " out of " + iterations + " iterations");
 				futures.clear();
+				logger.info("Creating objects");
 				EquationData[] equations = DataConverter.convertEquations(matrix.getEquations(), matrix.getxVector());
+				logger.info("Creating async requests");
 				for(int index = 0; index < equations.length; index++) {
 					final int ind = index;
 					futures.add(CompletableFuture.supplyAsync(() ->{
 						try {
-							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother", equations[ind], SmoothResponse.class);
+							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother/", equations[ind], SmoothResponse.class);
 						} catch (RestException e) {
 							logger.error("Error during external call", e);
 							return new SmoothResponse(matrix.getxVector()[ind], 0);
@@ -62,8 +67,10 @@ public class SmootherAlgo {
 					}));
 					
 				}
+				logger.info("Waiting for async requests");
 				CompletableFuture.allOf(futures.toArray(futuresArray)).get();
 				smoothIterationTime = 0;
+				logger.info("Updating results");
 				for(int index = 0; index < equations.length; index++) {
 					sResp = futuresArray[index].get();
 					smoothIterationTime += sResp.getTimeTook();
@@ -72,6 +79,7 @@ public class SmootherAlgo {
 				response.setAvgIterationsTime(response.getAvgIterationsTime() + (double)(smoothIterationTime) / (double)equations.length);
 			}
 			response.setDimention(matrix.dimention());
+			response.setMatrix(matrix);
 			response.setIterations(iterations);
 			response.setAvgIterationsTime(response.getAvgIterationsTime() / (double)iterations);
 			response.setTimeTookMilli(System.currentTimeMillis() - startTime);

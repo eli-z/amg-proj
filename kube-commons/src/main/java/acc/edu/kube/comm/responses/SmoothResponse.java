@@ -21,6 +21,9 @@ public class SmoothResponse {
 	public void setTimeTook(long timeTook) {
 		this.timeTook = timeTook;
 	}
+	public SmoothResponse() {
+		super();
+	}
 	
 	
 }
