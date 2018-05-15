@@ -1,6 +1,8 @@
 package acc.edu.amg.data.convertors;
 
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import acc.edu.amg.data.Equation;
 import acc.edu.amg.data.EquationData;
@@ -41,4 +43,20 @@ public class DataConverter {
 			result[i] = convertEquation(equations[i], xVector);
 		return result;
 	}
+	
+	public static List<EquationData[]> convertEquations(Equation[] equations, double[] xVector, int bulkSize) throws CalculationException {
+		if(equations == null || equations.length == 0)
+			throw new CalculationException("Equation array is null or empty");
+		List<EquationData[]> result = new LinkedList<>();
+		int start = 0, end;
+		while(start < equations.length) {
+			end = start + bulkSize;
+			if(end > equations.length)
+				end = equations.length;
+			result.add(convertEquations(Arrays.copyOfRange(equations, start, end), xVector));
+			start = end;
+		}
+		return result;
+	}
+
 }

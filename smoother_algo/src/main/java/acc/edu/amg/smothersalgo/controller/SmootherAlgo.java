@@ -25,8 +25,10 @@ import acc.edu.amg.data.EquationData;
 import acc.edu.amg.data.MatrixData;
 import acc.edu.amg.data.convertors.DataConverter;
 import acc.edu.amg.exceptions.CalculationException;
+import acc.edu.amg.smothersalgo.Application;
 import acc.edu.kube.comm.RestTemplateTool;
 import acc.edu.kube.comm.responses.SmoothResponse;
+import acc.edu.kube.comm.responses.SmoothResponseBulk;
 import acc.edu.kube.comm.responses.SmootherAlgoResponse;
 import acc.edu.kube.exceptions.RestException;
 
@@ -34,6 +36,7 @@ import acc.edu.kube.exceptions.RestException;
 @RequestMapping("/")
 public class SmootherAlgo {
 	private static Logger logger = LoggerFactory.getLogger(SmootherAlgo.class);
+	private static int bulkFactor = 10;
 	
 	@Autowired
 	private RestTemplateTool restTool;
@@ -45,38 +48,46 @@ public class SmootherAlgo {
 			SmootherAlgoResponse response = new SmootherAlgoResponse();
 			logger.info("Startring Jacobi for " + iterations + " iterations");
 			long startTime = System.currentTimeMillis();
-			CompletableFuture<SmoothResponse>[] futuresArray = new CompletableFuture[matrix.dimention()];
-			SmoothResponse sResp;
+			CompletableFuture<SmoothResponseBulk>[] futuresArray = new CompletableFuture[bulkFactor];
+			SmoothResponseBulk sResp;
+			int bulkSize = matrix.dimention() / bulkFactor;
+			if(bulkSize == 0)
+				bulkSize = matrix.dimention();
 			long smoothIterationTime;
-			List<CompletableFuture<SmoothResponse>> futures = new ArrayList<>(matrix.dimention());			
+			List<CompletableFuture<SmoothResponseBulk>> futures = new ArrayList<>(matrix.dimention());			
 			for(int i = 0; i < iterations; i++) {
 				logger.info("Startring iteration " + i + " out of " + iterations + " iterations");
 				futures.clear();
 				logger.info("Creating objects");
-				EquationData[] equations = DataConverter.convertEquations(matrix.getEquations(), matrix.getxVector());
+				List<EquationData[]> equations = DataConverter.convertEquations(matrix.getEquations(), matrix.getxVector(), bulkSize);
 				logger.info("Creating async requests");
-				for(int index = 0; index < equations.length; index++) {
+				for(int index = 0; index < equations.size(); index++) {
 					final int ind = index;
 					futures.add(CompletableFuture.supplyAsync(() ->{
 						try {
-							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother/", equations[ind], SmoothResponse.class);
+							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother/bulk", equations.get(ind), SmoothResponseBulk.class);
 						} catch (RestException e) {
 							logger.error("Error during external call", e);
-							return new SmoothResponse(matrix.getxVector()[ind], 0);
+							return null;
 						}
-					}));
+					}, Application.getExecutorService()));
 					
 				}
 				logger.info("Waiting for async requests");
 				CompletableFuture.allOf(futures.toArray(futuresArray)).get();
 				smoothIterationTime = 0;
 				logger.info("Updating results");
-				for(int index = 0; index < equations.length; index++) {
+				SmoothResponse[] sRespTmp;
+				for(int index = 0; index < equations.size(); index++) {
 					sResp = futuresArray[index].get();
 					smoothIterationTime += sResp.getTimeTook();
-					matrix.getxVector()[index] = sResp.getValue();
+					sRespTmp = sResp.getResponces();
+					for(int j = 0; j < sRespTmp.length; j++) {
+						matrix.getxVector()[index * bulkSize + j] = sRespTmp[j].getValue();	
+					}
+					
 				}
-				response.setAvgIterationsTime(response.getAvgIterationsTime() + (double)(smoothIterationTime) / (double)equations.length);
+				response.setAvgIterationsTime(response.getAvgIterationsTime() + (double)(smoothIterationTime) / (double)equations.size());
 			}
 			response.setDimention(matrix.dimention());
 			response.setMatrix(matrix);
