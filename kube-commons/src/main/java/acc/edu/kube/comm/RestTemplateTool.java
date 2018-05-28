@@ -20,10 +20,10 @@ public class RestTemplateTool {
 	@Autowired
 	private RestTemplate restTemplate;
 	
-	public <Req,Resp> Resp doExchange(HttpMethod method, String serviceName, String path, Req requestBody, Class<Resp> respClass, Object... urlParams) throws RestException {
+	public <Req,Resp> Resp doExchange(HttpMethod method, String serviceName, String path, String query, Req requestBody, Class<Resp> respClass, Object... urlParams) throws RestException {
 		URI uri;
 		try {
-			uri = createUri(serviceName, path, urlParams);
+			uri = createUri(serviceName, path, query, urlParams);
 		} catch (DiscoveryException e) {
 			throw new RestException(e.getMessage(), e);
 		}
@@ -34,10 +34,13 @@ public class RestTemplateTool {
 		throw new RestException("Request failed with error code " + response.getStatusCode());
 	}
 
-	public static URI createUri(String serviceName, String path, Object... urlParams) throws DiscoveryException {
+	public static URI createUri(String serviceName, String path, String query, Object... urlParams) throws DiscoveryException {
 		return UriComponentsBuilder.newInstance().scheme("http").host(ServiceDiscovery.discoverServiceHost(serviceName))
 		.port(ServiceDiscovery.discoverServicePort(serviceName))
-		.path(path).buildAndExpand(urlParams).toUri();
+		.path(path)
+		.query(query)
+		.buildAndExpand(urlParams)
+		.toUri();
 	}
 
 	public RestTemplate getRestTemplate() {

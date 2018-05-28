@@ -11,7 +11,7 @@ public class Test {
 	public static void main(String[] args) throws RestException {
 		RestTemplateTool rt = new RestTemplateTool();
 		rt.setRestTemplate(new RestTemplate());
-		String resp = rt.doExchange(HttpMethod.POST, "smoother", "/smoother", null, String.class);
+		String resp = rt.doExchange(HttpMethod.POST, "smoother", "/smoother", null, null, String.class);
 		System.out.println(resp);
 
 	}

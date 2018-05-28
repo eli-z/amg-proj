@@ -19,8 +19,8 @@ public class MatrixDataGenerator {
 		while(dimention <= 1_000_000) {
 		//String json = new Gson().toJson(generate1m21Pattern(10000));
 		MatrixData md = generate1m21Pattern(dimention);
-		SmootherAlgoResponse sar = rt.doExchange(HttpMethod.POST, "smoother-algo", "/smoother-algo/jacobi/3", md, SmootherAlgoResponse.class);
-		System.out.println(dimention + "," +sar.getTimeTookMilli() + "," + ((double)sar.getAvgIterationsTime() / 1_000_000d));
+		SmootherAlgoResponse sar = rt.doExchange(HttpMethod.POST, "smoother-algo", "/smoother-algo/jacobi/3","bulkSize=50000", md, SmootherAlgoResponse.class);
+		System.out.println(dimention + "," +(sar.getTimeTookMilli() / 3) + "," + ((double)sar.getAvgIterationsTime() / 1_000_000d));
 		dimention *= 10;
 		}
 //		System.out.println(new Gson().toJson(generate1m21Pattern(3)));

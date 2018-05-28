@@ -42,17 +42,26 @@ public class SmootherAlgo {
 	private RestTemplateTool restTool;
 	
 	@PostMapping(path="jacobi/{iterations}")
-	public ResponseEntity<SmootherAlgoResponse> smoothJ(@PathVariable("iterations") Integer iterations, @RequestBody MatrixData matrix) throws CalculationException, InterruptedException, ExecutionException{
+	public ResponseEntity<SmootherAlgoResponse> smoothJ(@PathVariable("iterations") Integer iterations, @RequestParam(name="bulkSize", required=false) Integer bulkSizeOverride, @RequestBody MatrixData matrix) throws CalculationException, InterruptedException, ExecutionException{
 		if(matrix.validate())
 		{
 			SmootherAlgoResponse response = new SmootherAlgoResponse();
 			logger.info("Startring Jacobi for " + iterations + " iterations");
 			long startTime = System.currentTimeMillis();
-			CompletableFuture<SmoothResponseBulk>[] futuresArray = new CompletableFuture[bulkFactor];
+			CompletableFuture<SmoothResponseBulk>[] futuresArray;
 			SmoothResponseBulk sResp;
+			
 			int bulkSize = matrix.dimention() / bulkFactor;
 			if(bulkSize == 0)
 				bulkSize = matrix.dimention();
+			//Override bulk factor
+			if(bulkSizeOverride != null && bulkSize > bulkSizeOverride.intValue()) {
+				logger.info("Overriding bulk size to be " + bulkSizeOverride);
+				bulkSize = bulkSizeOverride;
+				futuresArray = new CompletableFuture[(matrix.dimention() / bulkSize) + ((matrix.dimention() % bulkSize) == 0 ? 0 : 1)];
+			}
+			else
+				futuresArray = new CompletableFuture[bulkFactor];
 			long smoothIterationTime;
 			List<CompletableFuture<SmoothResponseBulk>> futures = new ArrayList<>(matrix.dimention());			
 			for(int i = 0; i < iterations; i++) {
@@ -65,7 +74,7 @@ public class SmootherAlgo {
 					final int ind = index;
 					futures.add(CompletableFuture.supplyAsync(() ->{
 						try {
-							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother/bulk", equations.get(ind), SmoothResponseBulk.class);
+							return restTool.doExchange(HttpMethod.POST, "smoother", "/smoother/bulk", null, equations.get(ind), SmoothResponseBulk.class);
 						} catch (RestException e) {
 							logger.error("Error during external call", e);
 							return null;
@@ -74,7 +83,7 @@ public class SmootherAlgo {
 					
 				}
 				logger.info("Waiting for async requests");
-				CompletableFuture.allOf(futures.toArray(futuresArray)).get();
+				CompletableFuture.allOf(futuresArray = futures.toArray(futuresArray)).get();
 				smoothIterationTime = 0;
 				logger.info("Updating results");
 				SmoothResponse[] sRespTmp;
